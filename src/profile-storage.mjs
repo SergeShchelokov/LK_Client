@@ -8,8 +8,8 @@ export function loadProfile(storage, defaults) {
     const fields = Object.fromEntries(editable
       .filter(field => typeof stored[field] === 'string')
       .map(field => [field, stored[field]]))
-    const photo = typeof stored.photo === 'string' && /^data:image\/(jpeg|png);base64,[\w+/]+=*$/.test(stored.photo)
-      ? stored.photo : ''
+    const photo = stored.photo === 'initials' || (typeof stored.photo === 'string' && /^data:image\/(jpeg|png);base64,[\w+/]+=*$/.test(stored.photo))
+      ? stored.photo : defaults.photo
     return { ...defaults, ...fields, photo }
   } catch {
     return { ...defaults }

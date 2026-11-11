@@ -78,20 +78,88 @@ export function playMove(game, index) {
 export function chooseMove(game) {
   if (game.winner || game.draw) return null;
 
-  const emptyCells = [];
-  game.board.forEach((mark, index) => {
-    if (mark === null) emptyCells.push(index);
-  });
+  const { size, target, turn } = game;
+  const board = game.board.map(mark => mark === null ? 0 : mark === turn ? 1 : -1);
+  const moves = board.flatMap((mark, index) => mark === 0 ? [index] : []);
+  if (!moves.length) return null;
 
-  const winningMove = emptyCells.find(index => playMove(game, index).winner === game.turn);
-  if (winningMove !== undefined) return winningMove;
+  const center = (size - 1) / 2;
+  const distance = index => Math.abs(Math.floor(index / size) - center) + Math.abs(index % size - center);
+  moves.sort((a, b) => distance(a) - distance(b) || a - b);
+  const lines = [];
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      for (const [dr, dc] of directions) {
+        const endRow = row + dr * (target - 1);
+        const endCol = col + dc * (target - 1);
+        if (endRow < 0 || endRow >= size || endCol < 0 || endCol >= size) continue;
+        lines.push(Array.from({ length: target }, (_, step) => (row + dr * step) * size + col + dc * step));
+      }
+    }
+  }
+  const weights = Array.from({ length: target }, (_, count) => count ? 4 ** (count - target) : 0);
+  const mate = lines.length + 10;
 
-  const opponent = { ...game, turn: otherMark(game) };
-  const blockingMove = emptyCells.find(index => playMove(opponent, index).winner === opponent.turn);
-  if (blockingMove !== undefined) return blockingMove;
+  function inspect(side) {
+    let score = 0;
+    let win = -1;
+    let block = -1;
+    let fork = false;
+    for (const line of lines) {
+      let own = 0;
+      let opponent = 0;
+      let empty = -1;
+      for (const index of line) {
+        if (board[index] === side) own++;
+        else if (board[index] === -side) opponent++;
+        else empty = index;
+      }
+      if (own && opponent) continue;
+      if (own === target - 1 && empty >= 0) win = empty;
+      if (opponent === target - 1 && empty >= 0) {
+        fork ||= block !== -1 && block !== empty;
+        block = empty;
+      }
+      score += (weights[own] ?? 0) - (weights[opponent] ?? 0);
+    }
+    return { score, win, block, fork };
+  }
 
-  const center = (game.size - 1) / 2;
-  const distanceToCenter = index => Math.abs(Math.floor(index / game.size) - center) + Math.abs(index % game.size - center);
-  emptyCells.sort((a, b) => distanceToCenter(a) - distanceToCenter(b) || a - b);
-  return emptyCells[0] ?? null;
+  function search(side, depth, ply, alpha, beta) {
+    if (ply === moves.length) return 0;
+    const { score, win, block, fork } = inspect(side);
+    if (win !== -1) return mate - ply - 1;
+    // Two distinct winning squares cannot both be covered in a single turn.
+    if (fork) return -mate + ply + 2;
+    if (depth === 0) return score;
+    let best = -Infinity;
+    for (const index of block === -1 ? moves : [block]) {
+      if (board[index]) continue;
+      board[index] = side;
+      const value = -search(-side, depth - 1, ply + 1, -beta, -alpha);
+      board[index] = 0;
+      if (value > best) best = value;
+      if (value > alpha) alpha = value;
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+
+  const { win, block } = inspect(1);
+  if (win !== -1) return win;
+  if (block !== -1) return block;
+
+  let bestMove = moves[0];
+  let bestScore = -Infinity;
+  for (const index of moves) {
+    board[index] = 1;
+    // This move plus three replies: two turns per player.
+    const score = -search(-1, 3, 1, -Infinity, -bestScore);
+    board[index] = 0;
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = index;
+    }
+  }
+  return bestMove;
 }

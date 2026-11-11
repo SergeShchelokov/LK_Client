@@ -16,6 +16,11 @@ import hideIcon from './assets/hide.svg'
 import checkIcon from './assets/check.svg'
 import errorIcon from './assets/error.svg'
 import footerLine from './assets/footer-line.svg'
+import defaultAvatar from './assets/header-avatar.png'
+import headerStar from './assets/header-star.svg'
+import headerGrid from './assets/header-grid.svg'
+import headerProfile from './assets/header-profile.svg'
+import headerExit from './assets/header-exit.svg'
 
 const tabs = [
   ['info', 'Основная информация'], ['security', 'Безопасность'],
@@ -37,12 +42,14 @@ const exampleProfile = {
   firstName: 'Иван', lastName: 'Иванов', middleName: 'Иванович',
   position: 'Менеджер по работе с партнёрами', email: 'ivan.ivanov@example.com',
   phone: '+7 (900) 000-00-00', role: 'Администратор', department: 'Отдел продаж',
-  comment: 'По рабочим вопросам — с 9:00 до 18:00', photo: '',
+  comment: 'По рабочим вопросам — с 9:00 до 18:00', photo: 'default',
 }
 const saved = shallowRef({ ...exampleProfile })
 try { saved.value = loadProfile(window.localStorage, exampleProfile) } catch { /* Storage may be blocked by browser settings. */ }
 const draft = ref({ ...saved.value })
-const open = shallowRef(true)
+const open = shallowRef(false)
+const headerAvatar = ref(null)
+const signedOut = shallowRef(false)
 const activeTab = shallowRef('info')
 const fileInput = ref(null)
 const profileForm = ref(null)
@@ -51,7 +58,19 @@ const photoError = shallowRef('')
 const status = shallowRef('')
 const saveError = shallowRef('')
 let photoRequest = 0
-const initials = computed(() => [draft.value.lastName, draft.value.firstName].map(name => [...name.trim()][0] || '').join('').toLocaleUpperCase('ru') || '—')
+const initials = ({ lastName, firstName }) => [lastName, firstName].map(name => [...name.trim()][0] || '').join('').toLocaleUpperCase('ru') || '—'
+const avatarSrc = photo => photo === 'initials' ? '' : photo === 'default' ? defaultAvatar : photo
+
+function openProfile() {
+  removed.value = false
+  signedOut.value = false
+  open.value = true
+}
+
+function useNativeMenuClick(event) {
+  // Let native buttons dispatch click before v0's menu can consume the key.
+  if (event.key === 'Enter' || event.key === ' ') event.stopPropagation()
+}
 
 watch(open, isOpen => {
   if (!isOpen) {
@@ -61,6 +80,7 @@ watch(open, isOpen => {
     errors.value = {}
     saveError.value = ''
     resetPassword()
+    nextTick(() => headerAvatar.value?.$el?.focus())
   }
 })
 watch(activeTab, tab => {
@@ -100,7 +120,7 @@ async function selectPhoto(event) {
 
 function removePhoto() {
   photoRequest++
-  draft.value.photo = ''
+  draft.value.photo = 'initials'
   photoError.value = ''
 }
 
@@ -194,9 +214,34 @@ async function confirmDelete() {
 
 <template>
   <Dialog.Root v-model="open">
-    <main class="preview-background">
+    <header class="app-header">
+      <div class="app-header__company">
+        <span class="app-header__stars" aria-hidden="true">
+          <span v-for="star in 4" :key="star"><img :src="headerStar" alt="" /></span>
+        </span>
+        <span class="app-header__name">Прогрессивные Технологии Сибирь-Софт</span>
+      </div>
+      <div class="app-header__actions">
+        <img :src="headerGrid" alt="" />
+        <Menu.Root>
+          <Menu.Activator ref="headerAvatar" class="avatar app-header__avatar" aria-label="Меню профиля">
+            <img v-if="avatarSrc(saved.photo)" :src="avatarSrc(saved.photo)" alt="" />
+            <span v-else>{{ initials(saved) }}</span>
+          </Menu.Activator>
+          <Menu.Content class="header-menu" position-area="bottom span-left" aria-label="Профиль">
+            <Menu.Item as="button" type="button" class="header-menu__item header-menu__item--profile" @keydown="useNativeMenuClick" @click="openProfile">
+              <img :src="headerProfile" alt="" />Мой профиль
+            </Menu.Item>
+            <Menu.Item as="button" type="button" class="header-menu__item" @keydown="useNativeMenuClick" @click="signedOut = true; removed = false">
+              <img :src="headerExit" alt="" />Выход
+            </Menu.Item>
+          </Menu.Content>
+        </Menu.Root>
+      </div>
+    </header>
+    <main class="app-status">
       <p v-if="removed" role="status">Локальные данные профиля удалены.</p>
-      <Dialog.Activator class="button button--secondary" @click="removed = false">Открыть профиль</Dialog.Activator>
+      <p v-else-if="signedOut" role="status">Вы вышли из демопрофиля.</p>
     </main>
     <Dialog.Content class="profile" :scrim="false">
       <div class="profile-layout">
@@ -213,18 +258,18 @@ async function confirmDelete() {
               <form ref="profileForm" id="profile-form" novalidate @submit.prevent="submitProfile">
                 <div class="avatar-row">
                   <div class="avatar" aria-hidden="true">
-                    <img v-if="draft.photo" :src="draft.photo" alt="" />
-                    <span v-else>{{ initials }}</span>
+                    <img v-if="avatarSrc(draft.photo)" :src="avatarSrc(draft.photo)" alt="" />
+                    <span v-else>{{ initials(draft) }}</span>
                   </div>
                   <Menu.Root>
                     <Menu.Activator class="avatar-edit icon-button" aria-label="Изменить фото">
                       <img :src="editIcon" alt="" />
                     </Menu.Activator>
                     <Menu.Content class="avatar-menu" position-area="bottom span-right" aria-label="Действия с фото">
-                      <Menu.Item as="button" type="button" class="avatar-action" @click="fileInput?.click()">
+                      <Menu.Item as="button" type="button" class="avatar-action" @keydown="useNativeMenuClick" @click="fileInput?.click()">
                         <img :src="uploadIcon" alt="" /><span>Загрузить фото</span><small>(JPG, PNG • до 3 МБ)</small>
                       </Menu.Item>
-                      <Menu.Item as="button" type="button" class="avatar-action avatar-action--danger" :disabled="!draft.photo" @click="removePhoto">
+                      <Menu.Item as="button" type="button" class="avatar-action avatar-action--danger" :disabled="!avatarSrc(draft.photo)" @keydown="useNativeMenuClick" @click="removePhoto">
                         <img :src="deletePhotoIcon" alt="" /><span>Удалить фото</span>
                       </Menu.Item>
                     </Menu.Content>
@@ -262,11 +307,12 @@ async function confirmDelete() {
                   </div>
                   <UiButton variant="secondary" class="reset-password" @click="startPassword">Сбросить пароль</UiButton>
                 </div>
-                <form v-else class="password-form" @submit.prevent="savePassword">
+                <form v-else class="password-form" autocomplete="off" @submit.prevent="savePassword">
                   <div v-for="(label, index) in ['Новый пароль', 'Повторите новый пароль']" :key="label" class="password-field">
                     <img :src="lockIcon" alt="" />
                     <input ref="firstPassword" v-model="passwords[index]" :type="visible[index] ? 'text' : 'password'"
-                      :aria-label="label" autocomplete="new-password" :placeholder="label"
+                      :id="`profile-new-password-${index}`" :name="index === 0 ? 'new-password' : 'confirm-new-password'"
+                      :aria-label="label" autocomplete="section-profile-security new-password" autocapitalize="none" :spellcheck="false" :placeholder="label"
                       :aria-invalid="index === 1 && !!passwords[1] && !matches"
                       :aria-describedby="index === 0 ? 'password-rules' : passwords[1] && !matches ? 'password-match' : undefined" />
                     <button class="icon-button" type="button" :aria-label="`${visible[index] ? 'Скрыть' : 'Показать'}: ${label.toLowerCase()}`"

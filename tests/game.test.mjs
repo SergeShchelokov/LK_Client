@@ -35,11 +35,48 @@ test('a full board with no line is a draw', () => {
   assert.equal(game.draw, true)
 })
 
-test('computer prefers a win, then blocks, then takes the center', () => {
+test('computer plays a winning move before covering an immediate threat', () => {
   let game = newGame()
   assert.equal(chooseMove(playMove(game, 0)), 14)
   for (const index of [0, 6, 1, 7, 2]) game = playMove(game, index)
   assert.equal(chooseMove(game), 3)
   game = { ...game, board: game.board.map((mark, i) => i === 8 ? 'TRUE' : mark) }
   assert.equal(chooseMove(game), 9)
+})
+
+const position = (human, computer) => {
+  const game = newGame()
+  return {
+    ...game,
+    turn: 'TRUE',
+    board: game.board.map((_, index) => human.includes(index) ? 'FALSE' : computer.includes(index) ? 'TRUE' : null),
+  }
+}
+const free = game => game.board.flatMap((mark, index) => mark === null ? [index] : [])
+const winsAt = (game, turn) => free(game).filter(index => playMove({ ...game, turn }, index).winner === turn)
+
+test('computer blocks the square that would let FALSE create a fork', () => {
+  const game = position([7, 9, 35], [29, 31])
+  assert.deepEqual(winsAt(playMove({ ...game, turn: 'FALSE' }, 8), 'FALSE'), [6, 10])
+  const next = playMove(game, chooseMove(game))
+  for (const move of free(next)) assert.ok(winsAt(playMove(next, move), 'FALSE').length < 2)
+})
+
+test('computer creates two separate winning threats', () => {
+  const game = position([0, 6, 35], [13, 14])
+  const next = playMove(game, chooseMove(game))
+  assert.deepEqual(winsAt(next, 'TRUE'), [12, 16])
+  assert.deepEqual(winsAt(next, 'FALSE'), [])
+})
+
+test('computer sets up a fork on its second move against every reply', () => {
+  const game = [0, 25, 30, 10, 4, 32, 22].reduce(playMove, newGame())
+  const next = playMove(game, chooseMove(game))
+  assert.deepEqual(winsAt(next, 'TRUE'), [])
+  for (const move of free(next)) {
+    const reply = playMove(next, move)
+    assert.equal(reply.winner, null)
+    const attack = playMove(reply, chooseMove(reply))
+    assert.ok(attack.winner === 'TRUE' || (winsAt(attack, 'TRUE').length >= 2 && !winsAt(attack, 'FALSE').length), `reply at ${move}`)
+  }
 })

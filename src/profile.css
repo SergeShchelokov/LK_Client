@@ -23,10 +23,25 @@ button:not(:disabled, [aria-disabled="true"]) { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 img { display: block; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.preview-background { display: grid; min-height: 100dvh; align-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; margin: 0 24px; padding: 12px 24px; border-radius: var(--radius); background: var(--paper); box-shadow: 0 2px 8px rgb(47 43 61 / 12%); }
+.app-header__company, .app-header__actions, .app-header__stars { display: flex; align-items: center; }
+.app-header__company { min-width: 0; gap: 8px; }
+.app-header__stars { gap: 1px; }
+.app-header__stars span { display: grid; place-items: center; width: 17px; height: 16px; }
+.app-header__name { overflow: hidden; font-size: 16px; font-weight: 500; line-height: 24px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.app-header__actions { gap: 12px; }
+.app-header .app-header__avatar { width: 32px; height: 32px; padding: 0; border: 0; font-size: 12px; }
+.header-menu { align-self: start; justify-self: end; width: 224px; max-width: calc(100vw - 24px); padding: 6px; margin: 6px 0 0; border: 0; border-radius: 8px; background: var(--paper); box-shadow: -1px 4px 6px rgb(0 0 0 / 12%); }
+.header-menu__item { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 43px; padding: 8px 12px; border: 0; border-radius: 6px; background: var(--paper); color: #344054; line-height: 24px; text-align: left; }
+.header-menu__item--profile { min-height: 40px; background: #f2f4f7; color: var(--text); }
+.header-menu__item:is(:hover, :focus-visible) { background: #e4e7ec; }
+.header-menu__item:focus-visible { outline-offset: -2px; }
+.app-status { margin: 16px 24px; color: var(--muted-dark); }
 
 .profile { position: fixed; inset: 0 0 0 auto; width: min(800px, 100vw); max-width: none; height: 100dvh; max-height: none; padding: 0; margin: 0; border: 0; color: var(--text); background: var(--paper); overflow: hidden; }
 .profile::backdrop { background: rgb(0 0 0 / 40%); }
+.profile[open] { animation: profile-slide-in .2s ease-out; }
+@keyframes profile-slide-in { from { transform: translateX(100%); } }
 .profile-layout { display: flex; flex-direction: column; height: 100%; }
 .profile-header { display: flex; align-items: center; justify-content: space-between; height: 52px; flex: 0 0 52px; padding: 0 24px; border-bottom: 1px solid rgb(0 0 0 / 10%); }
 .profile-header h1 { margin: 0; padding-top: 4px; font-size: 20px; font-weight: 600; line-height: 24px; text-transform: uppercase; color: rgb(47 43 61 / 90%); }
@@ -73,6 +88,7 @@ img { display: block; }
 .password-field { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); }
 .password-field input, .password-field span { flex: 1; min-width: 0; line-height: 20px; }
 .password-field input { border: 0; padding: 4px 0; background: transparent; }
+.password-field input::-ms-reveal { display: none; }
 .password-field .icon-button { width: 24px; height: 24px; }
 .password-form { display: flex; flex-direction: column; align-items: stretch; gap: 22px; }
 .password-rules { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
@@ -124,6 +140,8 @@ img { display: block; }
 .game .game-reset { margin-top: 14px; border-color: #b692f6; color: var(--accent-strong); }
 
 @media (max-width: 560px) {
+  .app-header { margin: 0 8px; padding-inline: 12px; }
+  .app-header__name { font-size: 12px; }
   .profile-header, .profile-content, .profile-footer, .profile-status { padding-inline: 16px; }
   .tab-list { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, .75fr) minmax(0, 1.05fr); padding-inline: 16px; margin-top: 8px; }
   .tab, .tab[aria-selected="true"] { min-height: 42px; padding: 4px 2px; font-size: 10px; line-height: 13px; letter-spacing: 0; white-space: normal; }
@@ -142,5 +160,5 @@ img { display: block; }
   .game-cell--winning { border: 2px solid Highlight; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .button__spinner { animation: none; }
+  .button__spinner, .profile[open] { animation: none; }
 }
