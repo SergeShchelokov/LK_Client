@@ -149,9 +149,38 @@ export function chooseMove(game) {
   if (win !== -1) return win;
   if (block !== -1) return block;
 
-  let bestMove = moves[0];
+  const forkThreats = [];
+  if (size === 6 && target > 2 && board.filter(mark => mark === -1).length >= target - 2) {
+    for (const reply of moves) {
+      board[reply] = -1;
+      if (inspect(1).fork) forkThreats.push(reply);
+      board[reply] = 0;
+    }
+  }
+
+  let candidates = moves;
+  if (forkThreats.length) {
+    // Break ties by leaving the opponent fewer viable forks.
+    const ranked = moves.map(index => {
+      board[index] = 1;
+      let forkReplies = 0;
+      for (const reply of forkThreats) {
+        if (reply === index) continue;
+        board[reply] = -1;
+        const { fork, win } = inspect(1);
+        if (fork && win === -1) forkReplies++;
+        board[reply] = 0;
+      }
+      board[index] = 0;
+      return { index, forkReplies };
+    });
+    ranked.sort((a, b) => a.forkReplies - b.forkReplies);
+    candidates = ranked.map(({ index }) => index);
+  }
+
+  let bestMove = candidates[0];
   let bestScore = -Infinity;
-  for (const index of moves) {
+  for (const index of candidates) {
     board[index] = 1;
     // This move plus three replies: two turns per player.
     const score = -search(-1, 3, 1, -Infinity, -bestScore);
