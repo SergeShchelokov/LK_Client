@@ -2,12 +2,13 @@
   color-scheme: light;
   font: 14px/1.5 "Roboto Variable", Roboto, Arial, sans-serif;
   color: #1d2939;
-  background: #f2f4f7;
+  background: var(--grey-100);
   --paper: #fff;
   --text: #1d2939;
   --muted: #667085;
   --line: #e4e7ec;
   --subtle: #f9fafb;
+  --grey-100: #f2f4f7;
   --muted-dark: #475467;
   --accent: #9e77ed;
   --accent-strong: #6941c6;
@@ -81,17 +82,17 @@ img { display: block; }
 .ui-field > textarea { min-height: 120px; resize: none; }
 .ui-field > small, .field-error { margin: 3px 0 0 6px; color: #b42318; font-size: 12px; line-height: 16px; }
 .ui-field--invalid > input { border-color: #f04438; }
-.contact-hint { margin: 16px 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
-
-.security { width: min(100%, 358px); }
+.security { --password-field-width: 358px; }
 .security h2 { color: var(--text); }
-.password-field { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); }
+.password-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.password-field { display: flex; align-items: center; gap: 8px; width: min(100%, var(--password-field-width)); min-height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); }
 .password-field input, .password-field span { flex: 1; min-width: 0; line-height: 20px; }
+.password-field span { overflow-wrap: anywhere; }
 .password-field input { border: 0; padding: 4px 0; background: transparent; }
 .password-field input::-ms-reveal { display: none; }
 .password-field .icon-button { width: 24px; height: 24px; }
 .password-form { display: flex; flex-direction: column; align-items: stretch; gap: 22px; }
-.password-rules { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.password-rules { display: grid; max-width: var(--password-field-width); gap: 2px; margin: 0; padding: 0; list-style: none; }
 .password-rules li { display: flex; align-items: flex-start; gap: 8px; line-height: 20px; }
 .password-rules .is-valid { color: #12b76a; }
 .password-rules .is-invalid { color: #f97066; }
@@ -104,15 +105,42 @@ img { display: block; }
 .button--secondary:hover:not(:disabled) { background: var(--subtle); }
 .button--danger { min-width: 208px; background: var(--danger-bg); color: var(--danger); }
 .button--danger:hover { background: #fee4e2; }
-.button--delete { background: var(--danger); color: white; }
+.button--delete { background: var(--danger-bg); color: #f97066; font-weight: 600; line-height: 1.2; letter-spacing: .6px; }
+.button--delete:hover:not(:disabled) { background: #fee4e2; }
+.button--delete:disabled img { filter: grayscale(1); }
 .button:disabled { border-color: #f2f4f7; background: #f9fafb; color: #98a2b3; }
 .button__spinner { display: block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(1turn); } }
-.security .button { align-self: flex-start; padding-inline: 12px; font-size: 12px; font-weight: 500; letter-spacing: 0; }
-.reset-password { min-height: 34px; margin-top: 30px; padding-block: 4px; border-color: var(--line); background: var(--subtle); }
-.password-save { margin-top: -6px; }
-.password-save:disabled { min-height: 34px; padding-block: 4px; }
+.security .button { padding-inline: 12px; font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.reset-password { border-color: var(--line); background: var(--subtle); }
+.password-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.password-save { min-width: 148px; border-color: var(--line); }
+.password-save[aria-busy="true"] { background: var(--paper); border-color: var(--line); color: var(--accent); }
+.password-save .button__spinner { width: 24px; height: 24px; border-width: 3px; }
+.password-cancel { min-height: 34px; padding-block: 4px; border: 0; background: transparent; }
+.password-cancel:hover:not(:disabled) { background: var(--grey-100); }
 .profile-status { margin: 0; padding: 0 24px 12px; color: var(--muted-dark); }
+.password-toast-anchor { position: relative; z-index: 1; height: 0; }
+.password-toast {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100% - 48px);
+  padding: 15px 15px 15px 8px;
+  border: 1px solid currentColor;
+  border-left-width: 8px;
+  border-radius: var(--radius);
+  background: #f7fff5;
+  color: #79b279;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 12px 20px rgb(16 24 40 / 16%);
+}
+.password-toast img { flex: none; }
 .profile-footer { position: relative; display: flex; flex: 0 0 auto; align-items: center; gap: 16px; justify-content: space-between; min-height: 72px; padding: 16px 24px 16px 27px; overflow: hidden; }
 .footer-line { position: absolute; top: 0; left: 0; pointer-events: none; }
 .footer-actions, .delete-actions { display: flex; gap: 16px; }
