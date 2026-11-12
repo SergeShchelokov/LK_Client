@@ -14,6 +14,7 @@
   --accent-strong: #6941c6;
   --danger: #d92d20;
   --danger-bg: #fef3f2;
+  --input-error-color: #f97066;
   --radius: 6px;
   --button-height: 40px;
 }
@@ -80,35 +81,58 @@ img { display: block; }
 .ui-field > input[readonly] { background: var(--subtle); color: #98a2b3; }
 .ui-field:has(input[readonly]) > label { color: #98a2b3; }
 .ui-field > textarea { min-height: 120px; resize: none; }
-.ui-field > small, .field-error { margin: 3px 0 0 6px; color: #b42318; font-size: 12px; line-height: 16px; }
-.ui-field--invalid > input { border-color: #f04438; }
+.ui-field > small:not(.input-error), .field-error { margin: 3px 0 0 6px; color: #b42318; font-size: 12px; line-height: 16px; }
+.input-error {
+  position: relative;
+  align-self: flex-start;
+  max-width: calc(100% - 2px);
+  margin: -4px 0 0 2px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--input-error-color);
+  font-size: 12px;
+  line-height: 12px;
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 3.5px rgb(0 0 0 / 14%);
+}
 .security { --password-field-width: 358px; }
 .security h2 { color: var(--text); }
 .password-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.password-form .password-row { align-items: flex-start; }
+.password-control { display: flex; flex-direction: column; width: min(100%, var(--password-field-width)); }
 .password-field { display: flex; align-items: center; gap: 8px; width: min(100%, var(--password-field-width)); min-height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); }
 .password-field input, .password-field span { flex: 1; min-width: 0; line-height: 20px; }
 .password-field span { overflow-wrap: anywhere; }
 .password-field input { border: 0; padding: 4px 0; background: transparent; }
 .password-field input::-ms-reveal { display: none; }
 .password-field .icon-button { width: 24px; height: 24px; }
-.ui-field > :is(input, textarea):hover:not(:disabled, :read-only),
-.password-field:hover:has(> input:not(:disabled, :read-only)) { border-color: var(--accent); }
+.ui-field > :is(input, textarea):hover:not(:disabled, :read-only, [aria-invalid="true"]),
+.password-field:hover:has(> input:not(:disabled, :read-only, [aria-invalid="true"])) { border-color: var(--accent); }
 .ui-field > :is(input, textarea):focus,
 .password-field:has(> input:focus) {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px rgb(175 140 247 / 24%);
   outline: 2px solid transparent;
 }
-.ui-field:focus-within > label { color: #98a2b3; }
+.ui-field:not(.ui-field--invalid):focus-within > label { color: #98a2b3; }
 .ui-field > :is(input, textarea):focus:not(:read-only),
 .password-field > input:focus { color: var(--muted-dark); }
 .password-field > input:focus { outline: none; }
+.ui-field > input[aria-invalid="true"],
+.password-field:has(> input[aria-invalid="true"]) {
+  border-color: var(--input-error-color);
+  box-shadow: inset 0 0 0 1px var(--input-error-color);
+}
+.ui-field > input[aria-invalid="true"],
+.password-field > input[aria-invalid="true"] { color: #344054; }
+.ui-field--invalid > label,
+.password-field > input[aria-invalid="true"]::placeholder { color: var(--input-error-color); opacity: 1; }
 .password-form { display: flex; flex-direction: column; align-items: stretch; gap: 22px; }
 .password-rules { display: grid; max-width: var(--password-field-width); gap: 2px; margin: 0; padding: 0; list-style: none; }
 .password-rules li { display: flex; align-items: flex-start; gap: 8px; line-height: 20px; }
 .password-rules .is-valid { color: #12b76a; }
 .password-rules .is-invalid { color: #f97066; }
-.password-form .field-error { margin-top: -16px; }
 
 .button { display: inline-flex; width: auto; height: var(--button-height); align-items: center; justify-content: center; gap: 4px; padding: 7px 15px; border: 1px solid transparent; border-radius: var(--radius); font-size: 14px; font-weight: 400; line-height: 24px; letter-spacing: .7px; text-transform: uppercase; }
 .button--primary { background: var(--accent); color: white; }

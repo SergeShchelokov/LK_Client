@@ -11,6 +11,6 @@ function update(event: Event) { const value = (event.target as HTMLInputElement)
   <div class="ui-field" :class="{ 'ui-field--invalid': error }">
     <label :for="id ?? uid">{{ label }}<span v-if="required" aria-hidden="true">*</span></label>
     <input :id="id ?? uid" :value="model" :type="type" :readonly="readonly" :required="required" :maxlength="maxlength" :min="min" :max="max" :step="step" :placeholder="placeholder" :aria-invalid="!!error" :aria-describedby="error || help ? `${id ?? uid}-message` : undefined" v-bind="$attrs" @input="update" />
-    <small v-if="error || help" :id="`${id ?? uid}-message`" :role="error ? 'alert' : undefined">{{ error || help }}</small>
+    <small v-if="error || help" :id="`${id ?? uid}-message`" :class="{ 'input-error': error }" :role="error ? 'alert' : undefined">{{ error || help }}</small>
   </div>
 </template>
