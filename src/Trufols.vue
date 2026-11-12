@@ -2,7 +2,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import { useTimer } from '@vuetify/v0'
 import UiButton from './UiButton.vue'
-import logo from './assets/trufols-logo.png'
+import logo from './assets/trufols-logo.webp'
 import introGlow from './assets/trufols-glow.svg'
 import roundGlow from './assets/trufols-glow-round.svg'
 import { chooseMove, createLineGame, playMove } from './line-game.mjs'
@@ -75,7 +75,7 @@ function start() {
 <template>
   <section class="game" :class="{ 'game--round': round > 0 }" aria-labelledby="game-title">
     <img class="game-glow" :src="round ? roundGlow : introGlow" alt="" />
-    <div class="game-logo"><img :src="logo" alt="" /></div>
+    <div v-if="active" class="game-logo"><img :src="logo" alt="" decoding="async" /></div>
     <div class="game-heading">
       <h2 id="game-title">
         <template v-if="round">Раунд:{{ round }}</template>
