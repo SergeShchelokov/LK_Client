@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ type?: 'button' | 'submit'; disabled?: boolean; loading?: boolean; variant?: 'primary' | 'secondary' }>(), { type: 'button', disabled: false, loading: false, variant: 'primary' })
+withDefaults(defineProps<{ type?: 'button' | 'submit'; disabled?: boolean; loading?: boolean; variant?: 'primary' | 'secondary' | 'delete' }>(), { type: 'button', disabled: false, loading: false, variant: 'primary' })
 </script>
 
 <template>

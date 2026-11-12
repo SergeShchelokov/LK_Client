@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
-import { AlertDialog, Dialog, Menu, Tabs } from '@vuetify/v0/components'
+import { useTimer } from '@vuetify/v0'
+import { AlertDialog, Dialog, Menu, Snackbar, Tabs } from '@vuetify/v0/components'
 import UiButton from './UiButton.vue'
 import UiField from './UiField.vue'
 import Trufols from './Trufols.vue'
@@ -10,10 +11,12 @@ import editIcon from './assets/edit.svg'
 import uploadIcon from './assets/upload.svg'
 import deletePhotoIcon from './assets/delete-photo.svg'
 import deleteIcon from './assets/delete-profile.svg'
+import confirmDeleteIcon from './assets/confirm-delete.svg'
 import lockIcon from './assets/lock.svg'
 import showIcon from './assets/show.svg'
 import hideIcon from './assets/hide.svg'
 import checkIcon from './assets/check.svg'
+import passwordToastCheckIcon from './assets/password-toast-check.svg'
 import errorIcon from './assets/error.svg'
 import footerLine from './assets/footer-line.svg'
 import defaultAvatar from './assets/header-avatar.png'
@@ -152,9 +155,21 @@ async function submitProfile() {
 }
 
 const changingPassword = shallowRef(false)
+const demoPassword = shallowRef('DemoLogin1!')
+const showCurrentPassword = shallowRef(false)
 const passwords = ref(['', ''])
 const visible = ref([false, false])
 const firstPassword = ref(null)
+const resetPasswordButton = ref(null)
+const passwordToast = shallowRef(false)
+const passwordToastTimer = useTimer(() => { passwordToast.value = false }, { duration: 4500 })
+const passwordSaveTimer = useTimer(() => {
+  demoPassword.value = passwords.value[0]
+  cancelPassword()
+  passwordToast.value = true
+  passwordToastTimer.start()
+}, { duration: 2000 })
+const passwordSaving = passwordSaveTimer.isActive
 const checks = computed(() => [
   { label: 'Не менее 8 символов', passes: passwords.value[0].length >= 8 },
   { label: 'Должен содержать минимум одну заглавную букву (A–Z)', passes: /[A-Z]/.test(passwords.value[0]) },
@@ -164,26 +179,36 @@ const matches = computed(() => passwords.value[0] === passwords.value[1])
 const passwordReady = computed(() => checks.value.every(check => check.passes) && matches.value)
 
 function resetPassword() {
+  passwordSaveTimer.stop()
+  passwordToastTimer.stop()
+  passwordToast.value = false
   changingPassword.value = false
+  showCurrentPassword.value = false
   passwords.value = ['', '']
   visible.value = [false, false]
 }
 async function startPassword() {
   status.value = ''
+  showCurrentPassword.value = false
   changingPassword.value = true
   await nextTick()
   firstPassword.value?.[0]?.focus()
 }
-function savePassword() {
-  if (!passwordReady.value) return
+async function cancelPassword() {
   resetPassword()
-  status.value = 'Проверка пройдена. В демоверсии пароль аккаунта не меняется.'
+  await nextTick()
+  resetPasswordButton.value?.$el?.focus()
+}
+function savePassword() {
+  if (!passwordReady.value || passwordSaving.value) return
+  passwordSaveTimer.start()
 }
 
 const deleting = shallowRef(false)
 const pending = shallowRef(false)
 const confirmation = shallowRef('')
-const confirmationPhrase = 'УДАЛИТЬ'
+const confirmationWord = 'Удалить'
+const isDeleteConfirmed = computed(() => confirmation.value.toLowerCase() === confirmationWord.toLowerCase())
 const removed = shallowRef(false)
 const deleteError = shallowRef('')
 watch(deleting, isOpen => {
@@ -194,7 +219,7 @@ watch(deleting, isOpen => {
 })
 
 async function confirmDelete() {
-  if (pending.value || confirmation.value !== confirmationPhrase) return
+  if (pending.value || !isDeleteConfirmed.value) return
   pending.value = true
   deleteError.value = ''
   try {
@@ -293,41 +318,54 @@ async function confirmDelete() {
                     <textarea id="comment" v-model="draft.comment" name="comment" />
                   </div>
                 </div>
-                <p class="contact-hint">Эти контакты используются для связи<br />с вами по служебным вопросам</p>
               </form>
             </Tabs.Panel>
             <Tabs.Panel value="security" class="profile-content">
               <section class="security" aria-labelledby="password-heading">
                 <h2 id="password-heading">{{ changingPassword ? 'Сбросить пароль' : 'Пароль' }}</h2>
-                <div v-if="!changingPassword">
+                <div v-if="!changingPassword" class="password-row">
                   <div class="password-field">
                     <img :src="lockIcon" alt="" />
-                    <span aria-label="Текущий пароль скрыт">***********</span>
-                    <img :src="hideIcon" alt="" />
-                  </div>
-                  <UiButton variant="secondary" class="reset-password" @click="startPassword">Сбросить пароль</UiButton>
-                </div>
-                <form v-else class="password-form" autocomplete="off" @submit.prevent="savePassword">
-                  <div v-for="(label, index) in ['Новый пароль', 'Повторите новый пароль']" :key="label" class="password-field">
-                    <img :src="lockIcon" alt="" />
-                    <input ref="firstPassword" v-model="passwords[index]" :type="visible[index] ? 'text' : 'password'"
-                      :id="`profile-new-password-${index}`" :name="index === 0 ? 'new-password' : 'confirm-new-password'"
-                      :aria-label="label" autocomplete="section-profile-security new-password" autocapitalize="none" :spellcheck="false" :placeholder="label"
-                      :aria-invalid="index === 1 && !!passwords[1] && !matches"
-                      :aria-describedby="index === 0 ? 'password-rules' : passwords[1] && !matches ? 'password-match' : undefined" />
-                    <button class="icon-button" type="button" :aria-label="`${visible[index] ? 'Скрыть' : 'Показать'}: ${label.toLowerCase()}`"
-                      :aria-pressed="visible[index]" @click="visible[index] = !visible[index]">
-                      <img :src="visible[index] ? hideIcon : showIcon" alt="" />
+                    <span :aria-label="showCurrentPassword ? undefined : 'Текущий демопароль скрыт'">
+                      {{ showCurrentPassword ? demoPassword : '*'.repeat(demoPassword.length) }}
+                    </span>
+                    <button class="icon-button" type="button"
+                      :aria-label="showCurrentPassword ? 'Скрыть текущий демопароль' : 'Показать текущий демопароль'"
+                      :aria-pressed="showCurrentPassword" @click="showCurrentPassword = !showCurrentPassword">
+                      <img :src="showCurrentPassword ? hideIcon : showIcon" alt="" />
                     </button>
                   </div>
+                  <UiButton ref="resetPasswordButton" variant="secondary" class="reset-password" @click="startPassword">Сбросить пароль</UiButton>
+                </div>
+                <form v-else class="password-form" autocomplete="off" @submit.prevent="savePassword">
+                  <div v-for="(label, index) in ['Новый пароль', 'Повторите новый пароль']" :key="label" class="password-row">
+                    <div class="password-field">
+                      <img :src="lockIcon" alt="" />
+                      <input ref="firstPassword" v-model="passwords[index]" :type="visible[index] ? 'text' : 'password'"
+                        :id="`profile-new-password-${index}`" :name="index === 0 ? 'new-password' : 'confirm-new-password'"
+                        :aria-label="label" autocomplete="section-profile-security new-password" autocapitalize="none" :spellcheck="false" :placeholder="label"
+                        :readonly="passwordSaving" :aria-invalid="index === 1 && !!passwords[1] && !matches"
+                        :aria-describedby="index === 0 && !passwordSaving ? 'password-rules' : index === 1 && passwords[1] && !matches ? 'password-match' : undefined" />
+                      <button class="icon-button" type="button" :aria-label="`${visible[index] ? 'Скрыть' : 'Показать'}: ${label.toLowerCase()}`"
+                        :aria-pressed="visible[index]" @click="visible[index] = !visible[index]">
+                        <img :src="visible[index] ? hideIcon : showIcon" alt="" />
+                      </button>
+                    </div>
+                    <div v-if="index === 0" class="password-actions">
+                      <UiButton type="submit" variant="secondary" class="password-save" :disabled="!passwordReady"
+                        :loading="passwordSaving" :aria-label="passwordSaving ? 'Сохраняем пароль' : undefined">
+                        <template v-if="!passwordSaving">Сохранить пароль</template>
+                      </UiButton>
+                      <UiButton v-if="!passwordSaving" type="button" variant="secondary" class="password-cancel" @click="cancelPassword">Отменить</UiButton>
+                    </div>
+                  </div>
                   <p v-if="passwords[1] && !matches" id="password-match" class="field-error" role="alert">Пароли не совпадают.</p>
-                  <ul id="password-rules" class="password-rules" aria-label="Требования к паролю">
+                  <ul v-if="!passwordSaving" id="password-rules" class="password-rules" aria-label="Требования к паролю">
                     <li v-for="check in checks" :key="check.label" :class="check.passes ? 'is-valid' : 'is-invalid'">
                       <img :src="check.passes ? checkIcon : errorIcon" alt="" />
                       <span><span class="sr-only">{{ check.passes ? 'Выполнено: ' : 'Не выполнено: ' }}</span>{{ check.label }}</span>
                     </li>
                   </ul>
-                  <UiButton type="submit" variant="secondary" class="password-save" :disabled="!passwordReady">{{ passwordReady ? 'Сохранить новый пароль' : 'Сохранить' }}</UiButton>
                 </form>
               </section>
             </Tabs.Panel>
@@ -338,19 +376,28 @@ async function confirmDelete() {
         </Tabs.Root>
         <p v-if="status" class="profile-status" role="status">{{ status }}</p>
         <p v-if="saveError" class="profile-status field-error" role="alert">{{ saveError }}</p>
+        <div v-if="passwordToast" class="password-toast-anchor">
+          <Snackbar.Root class="password-toast" aria-atomic="true">
+            <img :src="passwordToastCheckIcon" alt="" /> Пароль успешно изменен
+          </Snackbar.Root>
+        </div>
         <footer class="profile-footer">
           <img class="footer-line" :src="footerLine" alt="" />
           <AlertDialog.Root v-model="deleting">
             <AlertDialog.Activator class="button button--danger"><img :src="deleteIcon" alt="" /> Удалить профиль</AlertDialog.Activator>
             <AlertDialog.Content class="delete-dialog" :close-on-escape="!pending" :scrim="false" :aria-busy="pending">
-              <AlertDialog.Title as="h2">Удалить профиль?</AlertDialog.Title>
-              <AlertDialog.Description as="p">Это действие нельзя отменить. Введите <strong>{{ confirmationPhrase }}</strong>, чтобы подтвердить.</AlertDialog.Description>
+              <AlertDialog.Title as="h2">Удалить ваш профиль?</AlertDialog.Title>
+              <AlertDialog.Description as="p">
+                Пожалуйста, введите слово «{{ confirmationWord }}», чтобы мы были уверены, что вы делаете это не случайно. Удалённый профиль восстановить нельзя.
+              </AlertDialog.Description>
               <form @submit.prevent="confirmDelete">
-                <UiField v-model="confirmation" label="Текст подтверждения" autocomplete="off" :disabled="pending" />
+                <UiField v-model="confirmation" label="Введите подтверждающее слово" autocomplete="off" :disabled="pending" />
                 <p v-if="deleteError" class="field-error" role="alert">{{ deleteError }}</p>
                 <div class="delete-actions">
-                  <AlertDialog.Cancel class="button button--secondary" :disabled="pending">Отмена</AlertDialog.Cancel>
-                  <UiButton type="submit" class="button--delete" :disabled="confirmation !== confirmationPhrase" :loading="pending">Удалить профиль</UiButton>
+                  <AlertDialog.Cancel class="button button--secondary" :disabled="pending">Закрыть</AlertDialog.Cancel>
+                  <UiButton type="submit" variant="delete" :disabled="!isDeleteConfirmed" :loading="pending">
+                    <img :src="confirmDeleteIcon" alt="" /> Удалить
+                  </UiButton>
                 </div>
               </form>
             </AlertDialog.Content>
