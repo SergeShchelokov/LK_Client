@@ -158,7 +158,8 @@ const demoPassword = shallowRef('DemoLogin1!')
 const showCurrentPassword = shallowRef(false)
 const passwords = ref(['', ''])
 const visible = ref([false, false])
-const firstPassword = ref(null)
+const passwordInputs = ref([])
+const passwordSubmitted = shallowRef(false)
 const resetPasswordButton = ref(null)
 const passwordToast = shallowRef(false)
 const passwordToastTimer = useTimer(() => { passwordToast.value = false }, { duration: 4500 })
@@ -174,8 +175,14 @@ const checks = computed(() => [
   { label: 'Должен содержать минимум одну заглавную букву (A–Z)', passes: /[A-Z]/.test(passwords.value[0]) },
   { label: 'Должен содержать символ (!"№-)', passes: /[!"№-]/.test(passwords.value[0]) },
 ])
-const matches = computed(() => passwords.value[0] === passwords.value[1])
-const passwordReady = computed(() => checks.value.every(check => check.passes) && matches.value)
+const passwordErrors = computed(() => {
+  if (!passwordSubmitted.value) return []
+  const [password, confirmation] = passwords.value
+  return [
+    !password ? 'Введите новый пароль.' : checks.value.some(check => !check.passes) ? 'Пароль не соответствует требованиям.' : '',
+    !confirmation ? 'Повторите новый пароль.' : confirmation !== password ? 'Пароли не совпадают.' : '',
+  ]
+})
 
 function resetPassword() {
   passwordSaveTimer.stop()
@@ -183,6 +190,7 @@ function resetPassword() {
   passwordToast.value = false
   changingPassword.value = false
   showCurrentPassword.value = false
+  passwordSubmitted.value = false
   passwords.value = ['', '']
   visible.value = [false, false]
 }
@@ -191,15 +199,22 @@ async function startPassword() {
   showCurrentPassword.value = false
   changingPassword.value = true
   await nextTick()
-  firstPassword.value?.[0]?.focus()
+  passwordInputs.value[0]?.focus()
 }
 async function cancelPassword() {
   resetPassword()
   await nextTick()
   resetPasswordButton.value?.$el?.focus()
 }
-function savePassword() {
-  if (!passwordReady.value || passwordSaving.value) return
+async function savePassword() {
+  if (passwordSaving.value) return
+  passwordSubmitted.value = true
+  const firstInvalid = passwordErrors.value.findIndex(Boolean)
+  if (firstInvalid !== -1) {
+    await nextTick()
+    passwordInputs.value[firstInvalid]?.focus()
+    return
+  }
   passwordSaveTimer.start()
 }
 
@@ -336,29 +351,31 @@ async function confirmDelete() {
                   </div>
                   <UiButton ref="resetPasswordButton" variant="secondary" class="reset-password" @click="startPassword">Сбросить пароль</UiButton>
                 </div>
-                <form v-else class="password-form" autocomplete="off" @submit.prevent="savePassword">
+                <form v-else id="password-form" class="password-form" autocomplete="off" @submit.prevent="savePassword">
                   <div v-for="(label, index) in ['Новый пароль', 'Повторите новый пароль']" :key="label" class="password-row">
-                    <div class="password-field">
-                      <img :src="lockIcon" alt="" />
-                      <input ref="firstPassword" v-model="passwords[index]" :type="visible[index] ? 'text' : 'password'"
-                        :id="`profile-new-password-${index}`" :name="index === 0 ? 'new-password' : 'confirm-new-password'"
-                        :aria-label="label" autocomplete="section-profile-security new-password" autocapitalize="none" :spellcheck="false" :placeholder="label"
-                        :readonly="passwordSaving" :aria-invalid="index === 1 && !!passwords[1] && !matches"
-                        :aria-describedby="index === 0 && !passwordSaving ? 'password-rules' : index === 1 && passwords[1] && !matches ? 'password-match' : undefined" />
-                      <button class="icon-button" type="button" :aria-label="`${visible[index] ? 'Скрыть' : 'Показать'}: ${label.toLowerCase()}`"
-                        :aria-pressed="visible[index]" @click="visible[index] = !visible[index]">
-                        <img :src="visible[index] ? hideIcon : showIcon" alt="" />
-                      </button>
+                    <div class="password-control">
+                      <div class="password-field">
+                        <img :src="lockIcon" alt="" />
+                        <input ref="passwordInputs" v-model="passwords[index]" :type="visible[index] ? 'text' : 'password'"
+                          :id="`profile-new-password-${index}`" :name="index === 0 ? 'new-password' : 'confirm-new-password'"
+                          :aria-label="label" autocomplete="section-profile-security new-password" autocapitalize="none" :spellcheck="false" :placeholder="label"
+                          :readonly="passwordSaving" :aria-invalid="!!passwordErrors[index]" aria-required="true"
+                          :aria-describedby="[passwordErrors[index] && `password-error-${index}`, index === 0 && !passwordSaving && 'password-rules'].filter(Boolean).join(' ') || undefined" />
+                        <button class="icon-button" type="button" :aria-label="`${visible[index] ? 'Скрыть' : 'Показать'}: ${label.toLowerCase()}`"
+                          :aria-pressed="visible[index]" @click="visible[index] = !visible[index]">
+                          <img :src="visible[index] ? hideIcon : showIcon" alt="" />
+                        </button>
+                      </div>
+                      <small v-if="passwordErrors[index]" :id="`password-error-${index}`" class="input-error" role="alert">{{ passwordErrors[index] }}</small>
                     </div>
                     <div v-if="index === 0" class="password-actions">
-                      <UiButton type="submit" variant="secondary" class="password-save" :disabled="!passwordReady"
+                      <UiButton type="submit" variant="secondary" class="password-save"
                         :loading="passwordSaving" :aria-label="passwordSaving ? 'Сохраняем пароль' : undefined">
                         <template v-if="!passwordSaving">Сохранить пароль</template>
                       </UiButton>
                       <UiButton v-if="!passwordSaving" type="button" variant="secondary" class="password-cancel" @click="cancelPassword">Отменить</UiButton>
                     </div>
                   </div>
-                  <p v-if="passwords[1] && !matches" id="password-match" class="field-error" role="alert">Пароли не совпадают.</p>
                   <ul v-if="!passwordSaving" id="password-rules" class="password-rules" aria-label="Требования к паролю">
                     <li v-for="check in checks" :key="check.label" :class="check.passes ? 'is-valid' : 'is-invalid'">
                       <img :src="check.passes ? checkIcon : errorIcon" alt="" />
@@ -401,7 +418,7 @@ async function confirmDelete() {
           </AlertDialog.Root>
           <div class="footer-actions">
             <Dialog.Close class="button button--secondary" aria-label="Закрыть">Закрыть</Dialog.Close>
-            <UiButton type="submit" form="profile-form">Сохранить</UiButton>
+            <UiButton type="submit" :form="activeTab === 'security' && changingPassword ? 'password-form' : 'profile-form'" :disabled="passwordSaving">Сохранить</UiButton>
           </div>
         </footer>
       </div>
