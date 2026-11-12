@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { chooseMove, createLineGame, playMove } from '../src/line-game.mjs'
 
 const newGame = () => createLineGame({ size: 6, target: 4, marks: ['FALSE', 'TRUE'] })
+const newTrufolsGame = () => createLineGame({ size: 6, target: 4, marks: ['TRUE', 'FALSE'] })
 
 for (const [direction, moves] of [
   ['horizontal', [0, 1, 2, 3]],
@@ -10,16 +11,16 @@ for (const [direction, moves] of [
   ['diagonal ↘', [0, 7, 14, 21]],
   ['diagonal ↙', [5, 10, 15, 20]],
 ]) {
-  test(`only four in a row wins: ${direction}`, () => {
+  test(`TRUE wins with four in a row: ${direction}`, () => {
     const rival = [30, 31, 32]
-    let game = newGame()
+    let game = newTrufolsGame()
     for (let step = 0; step < 3; step++) {
       game = playMove(playMove(game, moves[step]), rival[step])
     }
     assert.equal(game.winner, null)
     assert.equal(playMove(game, moves[0]), game)
     game = playMove(game, moves[3])
-    assert.equal(game.winner, 'FALSE')
+    assert.equal(game.winner, 'TRUE')
     assert.deepEqual(game.winningCells, moves)
     assert.equal(chooseMove(game), null)
     assert.equal(playMove(game, 35), game)
@@ -54,6 +55,17 @@ const position = (human, computer) => {
 }
 const free = game => game.board.flatMap((mark, index) => mark === null ? [index] : [])
 const winsAt = (game, turn) => free(game).filter(index => playMove({ ...game, turn }, index).winner === turn)
+
+test('FALSE chooses the defense that leaves fewer four-in-a-row forks', () => {
+  const game = [26, 12, 23, 9, 30, 16, 14, 25, 29].reduce(playMove, newTrufolsGame())
+  const defended = playMove(game, chooseMove(game))
+  const forkReplies = free(defended).filter(move => {
+    const reply = playMove(defended, move)
+    return winsAt(reply, 'TRUE').length > 1 && winsAt(reply, 'FALSE').length === 0
+  })
+  assert.equal(defended.turn, 'TRUE')
+  assert.ok(forkReplies.length <= 1)
+})
 
 test('computer blocks the square that would let FALSE create a fork', () => {
   const game = position([7, 9, 35], [29, 31])
