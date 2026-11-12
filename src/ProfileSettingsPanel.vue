@@ -11,7 +11,6 @@ import editIcon from './assets/edit.svg'
 import uploadIcon from './assets/upload.svg'
 import deletePhotoIcon from './assets/delete-photo.svg'
 import deleteIcon from './assets/delete-profile.svg'
-import confirmDeleteIcon from './assets/confirm-delete.svg'
 import lockIcon from './assets/lock.svg'
 import showIcon from './assets/show.svg'
 import hideIcon from './assets/hide.svg'
@@ -395,9 +394,7 @@ async function confirmDelete() {
                 <p v-if="deleteError" class="field-error" role="alert">{{ deleteError }}</p>
                 <div class="delete-actions">
                   <AlertDialog.Cancel class="button button--secondary" :disabled="pending">Закрыть</AlertDialog.Cancel>
-                  <UiButton type="submit" variant="delete" :disabled="!isDeleteConfirmed" :loading="pending">
-                    <img :src="confirmDeleteIcon" alt="" /> Удалить
-                  </UiButton>
+                  <UiButton type="submit" variant="delete" :disabled="!isDeleteConfirmed" :loading="pending">Удалить</UiButton>
                 </div>
               </form>
             </AlertDialog.Content>
